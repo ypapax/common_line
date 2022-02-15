@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const maxPrint = 10
+const defaultCount = 10
 
 type Parsed struct {
 	FilePath string
@@ -41,7 +41,6 @@ func addLine(parsed, full string) {
 		return
 	}
 	p := Parsed{FilePath: parsed, Copies: []string{full}}
-	ll.Parsed = append(ll.Parsed, p)
 	ll.ByParsedLine[parsed] = p
 }
 
@@ -55,15 +54,20 @@ func (a ByCopiesCount) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func sortByCount() {
 	ll.mtx.Lock()
 	defer ll.mtx.Unlock()
+	for _, v := range ll.ByParsedLine {
+		ll.Parsed = append(ll.Parsed, v)
+	}
+
 	sort.Sort(ByCopiesCount(ll.Parsed))
+	logrus.Tracef("len(ll.Parsed): %+v", len(ll.Parsed))
 }
 
-func printMostUsed() {
+func printMostUsed(maxPrint int) {
 	ll.mtx.Lock()
 	defer ll.mtx.Unlock()
 	for i, l := range ll.Parsed {
-		lc := logrus.WithField("len(l.Copies)", len(l.Copies))
-		lc.Infof("filePath: %+v", l.FilePath)
+		lc := logrus.WithField("len(l.Copies)", len(l.Copies)).WithField("print-count", maxPrint)
+		lc.Infof("%+v", l.FilePath)
 		if i > maxPrint {
 			break
 		}
@@ -76,9 +80,13 @@ func main(){
 		if err := logrus_conf.PrepareFromEnv("common_line"); err != nil {
 			return errors.WithStack(err)
 		}
-		var filePath string
+		var (
+			filePath string
+			count int
+		)
 		const fileParamName = "file"
 		flag.StringVar(&filePath, fileParamName, "", "file path of the log file")
+		flag.IntVar(&count, "count", defaultCount, "lines count in the result")
 		flag.Parse()
 		if len(filePath) == 0 {
 			flag.Usage()
@@ -103,7 +111,8 @@ func main(){
 			addLine(parsed, l)
 		}
 		sortByCount()
-		printMostUsed()
+		logrus.Infof("lines number: %+v", len(lines))
+		printMostUsed(count)
 		return nil
 	}(); err != nil {
 		logrus.Errorf("%+v", err)
