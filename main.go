@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/pkg/errors"
 	logrus "github.com/sirupsen/logrus"
 	"github.com/ypapax/logrus_conf"
@@ -66,7 +67,7 @@ func printMostUsed(maxPrint int) {
 	ll.mtx.Lock()
 	defer ll.mtx.Unlock()
 	for i, l := range ll.Parsed {
-		lc := logrus.WithField("len(l.Copies)", len(l.Copies)).WithField("print-count", maxPrint)
+		lc := logrus.WithField("len(l.Copies)", len(l.Copies)).WithField("i", fmt.Sprintf("%+v/%+v", i+1, maxPrint))/*.WithField("print-count", maxPrint)*/
 		lc.Infof("%+v", l.FilePath)
 		if i > maxPrint {
 			break
@@ -105,13 +106,13 @@ func main(){
 				return errors.WithStack(errP)
 			}
 			if len(parsed) == 0 {
-				logrus.Tracef("skip line %+v because it gives empty parsed result", l)
+				//logrus.Tracef("skip line %+v because it gives empty parsed result", l)
 				continue
 			}
 			addLine(parsed, l)
 		}
 		sortByCount()
-		logrus.Infof("lines number: %+v", len(lines))
+		logrus.Infof("lines number: %+v, count: %+v", len(lines), count)
 		printMostUsed(count)
 		return nil
 	}(); err != nil {
@@ -124,9 +125,9 @@ var reg= regexp.MustCompile(`\](.+\:\d+) `)
 
 func ParseLine(inputLine string) (string, error) {
 	sm := reg.FindAllStringSubmatch(inputLine, -1)
-	for i, sm1 := range sm {
+	/*for i, sm1 := range sm {
 		logrus.Tracef("%+v sm: %+v", i, strings.Join(sm1, "; "))
-	}
+	}*/
 	if len(sm) == 0 {
 		//return "", errors.Errorf("not enough parts for inputLine '%+v'", inputLine)
 		return "", nil
